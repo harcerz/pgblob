@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  pgserver:
+    build: .
+    image: pgserver:latest
+    container_name: pgserver
+    ports:
+      - "5432:5432"
+    environment:
+      - PG_PORT=5432
+      - PG_HOST=0.0.0.0
+      - PG_USER=postgres
+      - PG_PASSWORD=mysecretpassword
+      - DB_NAME=myapp
+      - STORAGE=local
+      - LOG_LEVEL=info
+      - LOG_FORMAT=text
+      - CONNECTION_POOL_SIZE=10
+      - CACHE_TTL_MINUTES=5
+    volumes:
+      - ./data:/data
+      - ./config.yaml:/root/config.yaml:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Example: Using S3 storage
+  pgserver-s3:
+    build: .
+    image: pgserver:latest
+    container_name: pgserver-s3
+    ports:
+      - "5433:5432"
+    environment:
+      - PG_PORT=5432
+      - PG_USER=postgres
+      - PG_PASSWORD=mysecretpassword
+      - DB_NAME=myapp
+      - STORAGE=s3
+      - S3_BUCKET=my-databases
+      - S3_REGION=us-east-1
+      - S3_PREFIX=sqlite-dbs/
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - LOG_LEVEL=info
+    restart: unless-stopped
+    profiles:
+      - s3
+
+  # Example: Using Azure storage
+  pgserver-azure:
+    build: .
+    image: pgserver:latest
+    container_name: pgserver-azure
+    ports:
+      - "5434:5432"
+    environment:
+      - PG_PORT=5432
+      - PG_USER=postgres
+      - PG_PASSWORD=mysecretpassword
+      - DB_NAME=myapp
+      - STORAGE=azure
+      - AZURE_STORAGE_ACCOUNT=${AZURE_STORAGE_ACCOUNT}
+      - AZURE_STORAGE_CONTAINER=sqlite-dbs
+      - AZURE_STORAGE_KEY=${AZURE_STORAGE_KEY}
+      - LOG_LEVEL=info
+    restart: unless-stopped
+    profiles:
+      - azure
+
+volumes:
+  data:
+    driver: local

@@ -1,0 +1,37 @@
+server:
+  port: 5432
+  host: 0.0.0.0
+  authentication:
+    user: postgres
+    password: mysecretpassword
+
+database:
+  name: myapp
+  sqlite_path: /tmp/myapp.sqlite
+  transaction_mode: deferred  # deferred, immediate, exclusive
+  connection_pool_size: 10
+
+storage:
+  backend: local  # local, s3, azure
+  cache_ttl_minutes: 5
+
+  # Local filesystem storage
+  local:
+    base_path: ./data
+
+  # AWS S3 storage
+  s3:
+    bucket: my-databases
+    region: us-east-1
+    prefix: sqlite-dbs/
+
+  # Azure Blob Storage
+  azure:
+    account: myaccount
+    container: sqlite-dbs
+    key: ""  # Leave empty to use managed identity
+    use_managed_identity: true
+
+logging:
+  level: info  # debug, info, warn, error
+  format: text  # text, json

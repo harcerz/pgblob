@@ -1,0 +1,38 @@
+# Binaries
+pgserver
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+*.out
+
+# Go workspace file
+go.work
+
+# SQLite files
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+
+# Data directory
+/data/
+/tmp/
+
+# Config files
+config.yaml
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
