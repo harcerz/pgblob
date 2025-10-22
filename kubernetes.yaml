@@ -1,0 +1,149 @@
+---
+# Secret for PostgreSQL password
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pgserver-secret
+type: Opaque
+stringData:
+  password: "mysecretpassword"
+  aws-access-key-id: "YOUR_AWS_ACCESS_KEY"
+  aws-secret-access-key: "YOUR_AWS_SECRET_KEY"
+
+---
+# ConfigMap for server configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgserver-config
+data:
+  PG_PORT: "5432"
+  PG_HOST: "0.0.0.0"
+  PG_USER: "postgres"
+  DB_NAME: "myapp"
+  STORAGE: "s3"
+  S3_BUCKET: "my-databases"
+  S3_REGION: "us-east-1"
+  S3_PREFIX: "sqlite-dbs/"
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  CONNECTION_POOL_SIZE: "10"
+  CACHE_TTL_MINUTES: "5"
+
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgserver
+  labels:
+    app: pgserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgserver
+  template:
+    metadata:
+      labels:
+        app: pgserver
+    spec:
+      containers:
+      - name: pgserver
+        image: pgserver:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5432
+          name: postgres
+          protocol: TCP
+        env:
+        - name: PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pgserver-secret
+              key: password
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: pgserver-secret
+              key: aws-access-key-id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: pgserver-secret
+              key: aws-secret-access-key
+        envFrom:
+        - configMapRef:
+            name: pgserver-config
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgserver
+  labels:
+    app: pgserver
+spec:
+  type: LoadBalancer
+  selector:
+    app: pgserver
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+    name: postgres
+
+---
+# HorizontalPodAutoscaler (optional)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pgserver-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: pgserver
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
